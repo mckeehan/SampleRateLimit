@@ -1,10 +1,6 @@
 package com.ki4hdu.ratelimit;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.Callable;
 
 public class Sample {
     public static void main(String[] args) {
