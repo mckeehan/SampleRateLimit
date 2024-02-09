@@ -15,8 +15,7 @@ public class Sample {
         }
     }
 
-    int counter = 0;
-    int threads = 30;
+    int threads = 15;
 
     public void run() throws InterruptedException {
         RateLimiterArray rateLimiter = new RateLimiterArray(2, 10, 1, TimeUnit.SECONDS);

@@ -15,19 +15,20 @@ import java.util.concurrent.Executors;
 public class RateLimiterArray {
 
     private int maxPermits;
-    private long timeAmount;
-    private TimeUnit timeUnit;
+    private long timeFrame;
     private Map<Integer, Long> permits = new HashMap<>();
+    private Map<Integer, Long> finishedProcesses = new HashMap<>();
     private Map<Integer, Long> synchronizedPermits = Collections.synchronizedMap(permits);
+    private Map<Integer, Long> synchronizedFinished = Collections.synchronizedMap(finishedProcesses);
     private ExecutorService executor;
 
     public RateLimiterArray(int maxThreads, int maxPermits, long timeAmount, TimeUnit timeUnit) {
         this.maxPermits = maxPermits;
-        this.timeAmount = timeAmount;
-        this.timeUnit = timeUnit;
-        this.executor = Executors.newFixedThreadPool(maxThreads); 
+        this.timeFrame = timeUnit.toMillis(timeAmount);
+        this.executor = Executors.newFixedThreadPool(maxThreads);
         for (int i = 0; i < maxPermits; i++) {
             synchronizedPermits.put(i, 0L);
+            synchronizedFinished.put(i, 0L);
         }
     }
 
@@ -35,28 +36,36 @@ public class RateLimiterArray {
         this(maxPermits, maxPermits, timeAmount, timeUnit);
     }
 
+    protected void ulockFinished() {
+        for (int j = 0; j < synchronizedFinished.size(); j++) {
+            if ((synchronizedFinished.get(j) != 0)
+                    && (System.currentTimeMillis() - synchronizedFinished.get(j) > timeFrame)) {
+                synchronizedPermits.put(j, 0L);
+                synchronizedFinished.put(j, 0L);
+                    }
+        }
+    }
+
     protected int aquirePermit() throws InterruptedException {
         int i = 0;
         while (true) {
-            if (synchronizedPermits.get(i) == 0) {
-                synchronizedPermits.put(i, System.currentTimeMillis());
-                return i;
+            synchronized (synchronizedPermits) {
+                if (i == 0) {
+                    ulockFinished();
+                }
+                if (synchronizedPermits.get(i) == 0) {
+                    synchronizedPermits.put(i, System.currentTimeMillis());
+                    // System.err.printf("Acquire permit %d\n", i);
+                    return i;
+                }
             }
             i = (i + 1) % maxPermits;
         }
     }
 
     protected void releasePermit(int i) {
-        Long x = timeUnit.toMillis(timeAmount);
-        Long finishedTime = System.currentTimeMillis();
-        while( System.currentTimeMillis() - finishedTime < x) {
-            try {
-                Thread.sleep(x/maxPermits);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        synchronizedPermits.put(i, 0L);
+        synchronizedFinished.put(i, System.currentTimeMillis());
+        // System.err.printf("Release permit %d\n", i);
     }
 
     public void execute(Runnable task) {
@@ -65,13 +74,21 @@ public class RateLimiterArray {
 
     public void shutdown() {
         System.err.println("Shutdown pending...");
-        while(true) {
+        while (true) {
+            ulockFinished();
             Set<Long> values = new HashSet<Long>(synchronizedPermits.values());
             if (values.size() == 1 && values.contains(0L)) {
                 System.err.println("Shutting down");
                 executor.shutdown();
                 System.err.println("Shutdown complete");
                 break;
+            } else {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                // System.err.printf("Still waiting for shutdown %s\n", values);
             }
         }
     }

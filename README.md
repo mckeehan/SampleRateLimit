@@ -7,10 +7,6 @@ RateLimiterArray will allow the execution of maxThreads while not exceeding the
 number of maxPermis in the given timeframe (timeAmount of the specified
 timeUnit).
 
-If maxThreads is less than maxPermits, the current implementation will limit
-the number of executions to maxThreads per timeframe due to the blocking design
-of the releasePermit method.
-
 ## Usage
 
 Instantiate a new RateLimiterArray object with the maxPermits and timeframe.
@@ -18,7 +14,6 @@ Call execute() with a Runnable to add items to the queue to be executed with
 the given rate limit. Call shutdown() after you have placed all of the tasks
 onto the queue - the shutdown will wait until there are no running tasks before
 it shuts down the executor.
-
 
 ## Explaining the logic
 
