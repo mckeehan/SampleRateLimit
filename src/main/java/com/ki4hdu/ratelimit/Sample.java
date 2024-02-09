@@ -1,21 +1,31 @@
 package com.ki4hdu.ratelimit;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 public class Sample {
+    public static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+
     public static void main(String[] args) {
         new Sample().run();
     }
 
     int counter = 0;
+    int threads = 30;
 
     public void run() {
-        RateLimiter rateLimiter = new RateLimiter(1000, 10, 1, TimeUnit.SECONDS);
-        for (int i = 0; i < 100; i++) {
+        RateLimiterArray rateLimiter = new RateLimiterArray(10, 1, TimeUnit.SECONDS);
+        try {
+            Thread.sleep(500);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        for (int i = 0; i < threads; i++) {
             // System.out.println("Submitting task: " + i);
             rateLimiter.execute(new MyData(i));
         }
-        while( counter < 99 ) {
+        while( counter < threads ) {
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
@@ -41,8 +51,9 @@ public class Sample {
             try {
                 // Simulate fetching data by waiting for a random amount of time
                 // System.out.printf("%s %d\n", System.currentTimeMillis(), i);
-                Thread.sleep((long) (Math.random() * 5000));
-                System.out.printf("%s\n", System.currentTimeMillis() / 1000);
+                Thread.sleep((long) (Math.random() * 100));
+                System.out.printf("%s\n", System.currentTimeMillis()/1000);
+                System.err.printf("%s\n", sdf.format(new Date(System.currentTimeMillis())));
                 increment();
             } catch (InterruptedException e) {
                 e.printStackTrace();
