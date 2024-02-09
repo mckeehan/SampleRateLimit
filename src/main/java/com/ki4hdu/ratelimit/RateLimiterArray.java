@@ -15,12 +15,16 @@ import java.util.concurrent.Executors;
 public class RateLimiterArray {
 
     private int maxPermits;
+    private long timeAmount;
+    private TimeUnit timeUnit;
     private Map<Integer, Long> permits = new HashMap<>();
     private Map<Integer, Long> synchronizedPermits = Collections.synchronizedMap(permits);
     private ExecutorService executor;
 
     public RateLimiterArray(int maxThreads, int maxPermits, long timeAmount, TimeUnit timeUnit) {
         this.maxPermits = maxPermits;
+        this.timeAmount = timeAmount;
+        this.timeUnit = timeUnit;
         this.executor = Executors.newFixedThreadPool(maxThreads); 
         for (int i = 0; i < maxPermits; i++) {
             synchronizedPermits.put(i, 0L);
@@ -31,15 +35,7 @@ public class RateLimiterArray {
         this(maxPermits, maxPermits, timeAmount, timeUnit);
     }
 
-    // public RateLimiterArray(int maxPermits) {
-    //     this.maxPermits = maxPermits;
-    //     this.executor = Executors.newFixedThreadPool(maxPermits);
-    //     for (int i = 0; i < maxPermits; i++) {
-    //         synchronizedPermits.put(i, 0L);
-    //     }
-    // }
-
-    public int aquirePermit() throws InterruptedException {
+    protected int aquirePermit() throws InterruptedException {
         int i = 0;
         while (true) {
             if (synchronizedPermits.get(i) == 0) {
@@ -50,10 +46,12 @@ public class RateLimiterArray {
         }
     }
 
-    public void releasePermit(int i) {
-        while (System.currentTimeMillis() - synchronizedPermits.get(i) < 1000) {
+    protected void releasePermit(int i) {
+        Long x = timeUnit.toMillis(timeAmount);
+        Long finishedTime = System.currentTimeMillis();
+        while( System.currentTimeMillis() - finishedTime < x) {
             try {
-                Thread.sleep(100);
+                Thread.sleep(x/maxPermits);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
