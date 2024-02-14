@@ -103,12 +103,16 @@ public class RateLimiterArray {
         }
 
         public void run() {
+            int myid = -1;
             try {
-                int myid = rateLimiter.aquirePermit();
+                myid = rateLimiter.aquirePermit();
                 task.run();
-                rateLimiter.releasePermit(myid);
-            } catch (InterruptedException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                if( myid != -1) {
+                    rateLimiter.releasePermit(myid);
+                }
             }
         }
     }
